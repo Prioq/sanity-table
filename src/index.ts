@@ -15,9 +15,40 @@ export { TableComponent, TablePreview };
 
 export interface TableConfig {
   rowType?: string;
+  cellSchema?: {
+    name: string;
+    type: string;
+    of: Array<{
+      type: string;
+      [key: string]: unknown;
+    }>;
+  };
 }
 
 export const table = definePlugin<TableConfig | void>(config => {
+  // Define the default block content schema for cells
+  const defaultCellSchema = {
+    name: 'tableCell',
+    type: 'array',
+    of: [
+      {
+        type: 'block',
+        styles: [{ title: 'Normal', value: 'normal' }],
+        lists: [],
+        marks: {
+          decorators: [
+            { title: 'Strong', value: 'strong' },
+            { title: 'Emphasis', value: 'em' },
+          ],
+          annotations: [],
+        },
+      },
+    ],
+  };
+
+  // Use custom cell schema if provided, otherwise use default
+  const cellSchema = config?.cellSchema || defaultCellSchema;
+
   const tableRowSchema = defineType({
     title: 'Table Row',
     name: config?.rowType || 'tableRow',
@@ -26,7 +57,7 @@ export const table = definePlugin<TableConfig | void>(config => {
       {
         name: 'cells',
         type: 'array',
-        of: [{ type: 'string' }],
+        of: [cellSchema],
       },
     ],
   });

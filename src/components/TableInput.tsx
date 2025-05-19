@@ -1,38 +1,52 @@
 import { RemoveIcon } from '@sanity/icons';
-import { Box, Button, TextInput } from '@sanity/ui';
-import type { FormEvent } from 'react';
+import { Box, Button } from '@sanity/ui';
+import { FormBuilderInput, useSchema } from 'sanity';
 
-import type { TableRow } from './TableComponent';
+import type { PortableTextBlock, TableRow } from './TableComponent';
 
 interface TableInputProps {
   rows: TableRow[];
-  updateCell: (
-    e: FormEvent<HTMLInputElement>,
-    rowIndex: number,
-    cellIndex: number
-  ) => void;
+  updateCell: (newValue: PortableTextBlock[], rowIndex: number, cellIndex: number) => void;
   removeRow: (index: number) => void;
   removeColumn: (index: number) => void;
 }
 
-export const TableInput = (props: TableInputProps) => {
-  const updateCell = props.updateCell;
+export const TableInput = (props: TableInputProps): JSX.Element => {
+  const { updateCell } = props;
+  const schema = useSchema();
+  
+  // Get the tableCell schema type
+  const tableCellType = schema.get('tableCell');
 
-  const renderRowCell = (rowIndex: number) =>
-    function RowCell(cell: string, cellIndex: number) {
+  const renderRowCell = (rowIndex: number) => {
+    function RowCell(cell: PortableTextBlock[], cellIndex: number): JSX.Element {
       return (
-        <td key={`cell-${rowIndex}-${cellIndex}`}>
-          <TextInput
-            fontSize={1}
-            padding={3}
-            value={cell}
-            onChange={e => updateCell(e, rowIndex, cellIndex)}
-          />
+        <td key={`cell-${rowIndex}-${cellIndex}`} style={{ minWidth: '200px' }}>
+          {tableCellType && (
+            <FormBuilderInput
+              level={0}
+              type={tableCellType}
+              value={cell}
+              onChange={(patchEvent): void => {
+                // Extract the value from the patch event
+                const value = patchEvent.patches.reduce((acc, patch) => {
+                  if (patch.type === 'set' && patch.path.length === 0) {
+                    return patch.value;
+                  }
+                  return acc;
+                }, cell);
+                
+                updateCell(value, rowIndex, cellIndex);
+              }}
+            />
+          )}
         </td>
       );
-    };
+    }
+    return RowCell;
+  };
 
-  const renderRow = (row: TableRow, rowIndex: number) => {
+  const renderRow = (row: TableRow, rowIndex: number): JSX.Element => {
     const renderCell = renderRowCell(rowIndex);
 
     return (
@@ -44,7 +58,7 @@ export const TableInput = (props: TableInputProps) => {
               <Button
                 icon={RemoveIcon}
                 padding={2}
-                onClick={() => props.removeRow(rowIndex)}
+                onClick={(): void => props.removeRow(rowIndex)}
                 mode="bleed"
               />
             </Box>
@@ -60,12 +74,12 @@ export const TableInput = (props: TableInputProps) => {
         {props.rows.map(renderRow)}
         <tr>
           {(props.rows[0]?.cells || []).map((_, i) => (
-            <td key={i}>
+            <td key={`column-${i}`}>
               <Box marginTop={1} style={{ textAlign: 'center' }}>
                 <Button
                   icon={RemoveIcon}
                   padding={2}
-                  onClick={() => props.removeColumn(i)}
+                  onClick={(): void => props.removeColumn(i)}
                   mode="bleed"
                 />
               </Box>

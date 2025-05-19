@@ -2,7 +2,7 @@
 import { AddIcon } from '@sanity/icons';
 import { Box, Button, Card, Dialog, Flex, Inline, Text } from '@sanity/ui';
 import { uuid } from '@sanity/uuid';
-import { type FormEvent, useState } from 'react';
+import { useState } from 'react';
 import { type ObjectInputProps, set, unset } from 'sanity';
 
 import { TableInput } from './TableInput';
@@ -18,16 +18,33 @@ export interface TableValue {
 
 export type TableProps = ObjectInputProps<TableValue>;
 
+export type PortableTextBlock = {
+  _type: string;
+  children: Array<{
+    _type: string;
+    text: string;
+    marks: string[];
+  }>;
+  markDefs: Array<{
+    _key: string;
+    _type: string;
+    [key: string]: unknown;
+  }>;
+  style: string;
+};
+
 export type TableRow = {
   _type: string;
   _key: string;
-  cells: string[];
+  cells: PortableTextBlock[][]; // Array of Portable Text blocks for each cell
 };
 
 // TODO refactor deeplone stuff to use proper patches
 // TODO use callback all the things
 
-export const TableComponent = (props: TableProps & { rowType?: string }) => {
+export const TableComponent = (
+  props: TableProps & { rowType?: string }
+): JSX.Element => {
   const { rowType = 'tableRow', value, onChange } = props;
   const [dialog, setDialog] = useState<{
     type: string;
@@ -42,18 +59,36 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
     return onChange(unset());
   };
 
+  // Helper function to create an empty cell with block content
+  const createEmptyCell = () => {
+    return [
+      {
+        _type: 'block',
+        children: [
+          {
+            _type: 'span',
+            text: '',
+            marks: [],
+          },
+        ],
+        markDefs: [],
+        style: 'normal',
+      },
+    ];
+  };
+
   const createTable = () => {
     const newValue: Omit<TableValue, '_type'> = {
       rows: [
         {
           _type: rowType,
           _key: uuid(),
-          cells: ['', ''],
+          cells: [createEmptyCell(), createEmptyCell()],
         },
         {
           _type: rowType,
           _key: uuid(),
-          cells: ['', ''],
+          cells: [createEmptyCell(), createEmptyCell()],
         },
       ],
     };
@@ -78,10 +113,13 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
     const columnCount = value?.rows[0].cells.length ?? 0;
     for (let i = 0; i < count; i++) {
       // Add as many cells as we have columns
+      const emptyCells = Array(columnCount)
+        .fill(null)
+        .map(() => createEmptyCell());
       newValue.rows.push({
         _type: rowType,
         _key: uuid(),
-        cells: Array(columnCount).fill(''),
+        cells: emptyCells,
       });
     }
     // eslint-disable-next-line consistent-return
@@ -96,10 +134,13 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
     // Calculate the column count from the first row
     const columnCount = value.rows[0].cells.length;
 
+    const emptyCells = Array(columnCount)
+      .fill(null)
+      .map(() => createEmptyCell());
     newValue.rows.splice(index, 0, {
       _type: rowType,
       _key: uuid(),
-      cells: Array(columnCount).fill(''),
+      cells: emptyCells,
     });
 
     // eslint-disable-next-line consistent-return
@@ -140,7 +181,7 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
     // Add a cell to each of the rows
     newValue.rows.forEach((_, i) => {
       for (let j = 0; j < count; j++) {
-        newValue.rows[i].cells.push('');
+        newValue.rows[i].cells.push(createEmptyCell());
       }
     });
     return updateValue(newValue);
@@ -153,7 +194,7 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
     const newValue = deepClone(value);
 
     newValue.rows.forEach((_, i) => {
-      newValue.rows[i].cells.splice(index, 0, '');
+      newValue.rows[i].cells.splice(index, 0, createEmptyCell());
     });
 
     return updateValue(newValue);
@@ -172,18 +213,16 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
   };
 
   const updateCell = (
-    e: FormEvent<HTMLInputElement>,
+    newCellValue: PortableTextBlock[],
     rowIndex: number,
     cellIndex: number
-  ) => {
+  ): void => {
     if (!value) {
       return;
     }
     const newValue = deepClone(value);
-    newValue.rows[rowIndex].cells[cellIndex] = (
-      e.target as HTMLInputElement
-    ).value;
-    return updateValue(newValue);
+    newValue.rows[rowIndex].cells[cellIndex] = newCellValue;
+    updateValue(newValue);
   };
 
   return (
@@ -253,8 +292,10 @@ export const TableComponent = (props: TableProps & { rowType?: string }) => {
   );
 };
 
-export function createTableComponent(rowType: string) {
-  return function Table(props: TableProps) {
+export function createTableComponent(
+  rowType: string
+): (props: TableProps) => JSX.Element {
+  return function Table(props: TableProps): JSX.Element {
     return <TableComponent {...props} rowType={rowType} />;
   };
 }

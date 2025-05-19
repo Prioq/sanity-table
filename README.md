@@ -77,6 +77,8 @@ export default defineConfig({
 
 ## Configuration
 
+### Row Type
+
 You can optionally configure the `_type` used for the row object in the table schema by passing a `rowType` when adding the plugin. For most users this is unnecessary, but it can be useful if you are migrating from a legacy table plugin.
 
 ```js
@@ -85,6 +87,55 @@ export default defineConfig({
   plugins: [
     table({
       rowType: 'my-custom-row-type',
+    }),
+  ],
+  // ...
+});
+```
+
+### Rich Content Cells
+
+This fork supports rich content in table cells using Portable Text. By default, cells will use a simple Portable Text editor with basic formatting options (bold, italic). You can customize the cell schema by providing a `cellSchema` option:
+
+```js
+export default defineConfig({
+  // ...
+  plugins: [
+    table({
+      cellSchema: {
+        name: 'tableCell',
+        type: 'array',
+        of: [
+          {
+            type: 'block',
+            styles: [{ title: 'Normal', value: 'normal' }],
+            lists: [],
+            marks: {
+              decorators: [
+                { title: 'Strong', value: 'strong' },
+                { title: 'Emphasis', value: 'em' },
+                { title: 'Underline', value: 'underline' },
+              ],
+              annotations: [
+                {
+                  name: 'link',
+                  type: 'object',
+                  title: 'Link',
+                  fields: [
+                    {
+                      name: 'href',
+                      type: 'url',
+                      title: 'URL',
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          // You can also add other content types to cells
+          { type: 'image' },
+        ],
+      },
     }),
   ],
   // ...

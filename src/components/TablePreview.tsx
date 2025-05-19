@@ -1,3 +1,4 @@
+import { PortableText } from '@portabletext/react';
 import { Box, Card, Grid, Inline, Label, Text } from '@sanity/ui';
 import type { PreviewProps } from 'sanity';
 
@@ -9,7 +10,18 @@ interface ValueProps {
   title?: string;
 }
 
-const Table = ({ rows }: { rows: TableRow[] }) => {
+// Simple component to render Portable Text content in preview
+const PortableTextPreview = ({ value }: { value: unknown }): JSX.Element => {
+  // If it's not an array or is empty, just return an empty string
+  if (!Array.isArray(value) || value.length === 0) {
+    return <Text>-</Text>;
+  }
+
+  // Use PortableText component to render the content
+  return <PortableText value={value} />;
+};
+
+const Table = ({ rows }: { rows: TableRow[] }): JSX.Element => {
   const numCols = rows.length === 0 ? 0 : rows[0].cells.length;
 
   return (
@@ -17,11 +29,11 @@ const Table = ({ rows }: { rows: TableRow[] }) => {
       {rows.map(row =>
         row.cells.map((cell, i) => (
           <Card
-            key={row._key + i}
+            key={`${row._key}-cell-${i}`}
             padding={2}
             style={{ outline: '1px solid #DFE2E9' }}
           >
-            <Text style={{ textOverflow: 'elipsis' }}>{cell}</Text>
+            <PortableTextPreview value={cell} />
           </Card>
         ))
       )}
@@ -29,7 +41,7 @@ const Table = ({ rows }: { rows: TableRow[] }) => {
   );
 };
 
-export const TablePreview = (props: ValueProps & PreviewProps) => {
+export const TablePreview = (props: ValueProps & PreviewProps): JSX.Element => {
   const { schemaType, rows = [], title = 'Title missing' } = props;
 
   return (
